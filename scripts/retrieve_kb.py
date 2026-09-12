@@ -10,9 +10,11 @@ import sys
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
+from netbird_preflight import ensure_netbird
+
 BASE_URL = os.environ.get("KB_BASE_URL", "http://100.98.140.155:6185")
-USERNAME = os.environ.get("KB_USERNAME", "autolife")
-PASSWORD = os.environ.get("KB_PASSWORD", "Autolife@1819")
+USERNAME = os.environ.get("KB_USERNAME")
+PASSWORD = os.environ.get("KB_PASSWORD")
 KB_NAMES = os.environ.get("KB_NAMES", "autolife-docs").split(",")
 TOP_K = int(os.environ.get("KB_TOP_K", "5"))
 
@@ -53,12 +55,17 @@ def retrieve(query, top_k=TOP_K):
 
 
 def main():
+    global BASE_URL
+    try:
+        ensure_netbird()
+    except (OSError, RuntimeError) as exc:
+        print(f"NetBird 预检失败：{exc}", file=sys.stderr)
+        return 2
     parser = argparse.ArgumentParser(description="Query Autolife Knowledge Base")
     parser.add_argument("query", help="Question to search")
     parser.add_argument("--top-k", type=int, default=TOP_K)
     parser.add_argument("--url", default=BASE_URL)
     args = parser.parse_args()
-    global BASE_URL
     if args.url:
         BASE_URL = args.url.rstrip("/")
     try:
@@ -67,7 +74,7 @@ def main():
             print(result)
         else:
             print("Knowledge base returned no relevant content.")
-    except (HTTPError, URLError, KeyError, json.JSONDecodeError) as e:
+    except (HTTPError, URLError, KeyError, RuntimeError, ValueError, json.JSONDecodeError) as e:
         print(f"Retrieval failed: {e}", file=sys.stderr)
         sys.exit(1)
 

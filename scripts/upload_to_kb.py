@@ -5,16 +5,18 @@ Usage:
     cat summary.md | python upload_to_kb.py - --title "Fix Report: Battery 100%"
 """
 import argparse
-import hashlib
 import json
 import os
 import sys
 import tempfile
+import time
 from urllib.request import Request, urlopen
 
+from netbird_preflight import ensure_netbird
+
 BASE_URL = os.environ.get("KB_BASE_URL", "http://100.98.140.155:6185")
-USERNAME = os.environ.get("KB_USERNAME", "autolife")
-PASSWORD = os.environ.get("KB_PASSWORD", "Autolife@1819")
+USERNAME = os.environ.get("KB_USERNAME")
+PASSWORD = os.environ.get("KB_PASSWORD")
 
 
 def post_json(url, payload, headers=None):
@@ -57,17 +59,6 @@ def upload_file(token, kb_id, file_path, title=None):
     with open(file_path, "rb") as f:
         file_data = f.read()
 
-    parts = []
-    parts.append(
-        f"--{boundary}\r\n"
-        f'Content-Disposition: form-data; name="kb_id"\r\n\r\n{kb_id}\r\n'
-    )
-    parts.append(
-        f"--{boundary}\r\n"
-        f'Content-Disposition: form-data; name="files"; filename="{filename}"\r\n'
-        f"Content-Type: text/markdown\r\n\r\n"
-    ).encode("utf-8")
-
     body = b""
     body += (
         f"--{boundary}\r\n"
@@ -96,12 +87,49 @@ def upload_file(token, kb_id, file_path, title=None):
         return json.loads(resp.read().decode("utf-8"))
 
 
+def get_json(url, token):
+    req = Request(url, headers={"Authorization": f"Bearer {token}"})
+    with urlopen(req, timeout=30) as resp:
+        return json.loads(resp.read().decode("utf-8"))
+
+
+def wait_for_upload(token, task_id, timeout_seconds=900):
+    deadline = time.time() + timeout_seconds
+    last = {}
+    while time.time() < deadline:
+        last = get_json(
+            f"{BASE_URL}/api/kb/document/upload/progress?task_id={task_id}",
+            token,
+        )
+        payload = last.get("data", {})
+        status = payload.get("status")
+        if status == "completed":
+            result = payload.get("result", {})
+            if result.get("failed_count"):
+                raise RuntimeError(f"部分文件处理失败：{result.get('failed')}")
+            return result
+        if status == "failed":
+            raise RuntimeError(payload.get("error") or "知识库处理失败")
+        time.sleep(2)
+    raise TimeoutError(f"上传任务 {task_id} 等待超时")
+
+
 def main():
+    try:
+        ensure_netbird()
+    except (OSError, RuntimeError) as exc:
+        print(f"NetBird 预检失败：{exc}", file=sys.stderr)
+        return 2
+
     parser = argparse.ArgumentParser(description="Upload document to Autolife KB")
     parser.add_argument("file", help="Path to the file to upload, or - for stdin")
     parser.add_argument("--kb-name", default=os.environ.get("KB_NAMES", "autolife-docs"))
     parser.add_argument("--title", default=None, help="Document title (defaults to filename)")
     args = parser.parse_args()
+
+    if not USERNAME or not PASSWORD:
+        print("请设置 KB_USERNAME 和 KB_PASSWORD", file=sys.stderr)
+        return 2
 
     if args.file == "-":
         content = sys.stdin.read()
@@ -124,11 +152,14 @@ def main():
         sys.exit(1)
 
     result = upload_file(token, kb_id, file_path, args.title)
-    if result.get("status") == "ok":
-        print(f"Uploaded: {args.title or os.path.basename(file_path)}")
-    else:
-        print(f"Upload failed: {result}", file=sys.stderr)
+    task_id = (result.get("data") or {}).get("task_id")
+    if not task_id:
+        print(f"上传接口未返回 task_id：{result}", file=sys.stderr)
         sys.exit(1)
+
+    processed = wait_for_upload(token, task_id)
+    print(f"Uploaded: {args.title or os.path.basename(file_path)}")
+    print(f"Processed: {processed}")
 
     if args.file == "-":
         os.unlink(file_path)

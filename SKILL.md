@@ -8,6 +8,16 @@ description: >
 
 # Autolife Knowledge Base
 
+## NetBird Constraint
+
+All remote KB access requires the self-hosted NetBird network:
+
+```text
+https://netbird.autolife-robotics.com:443
+```
+
+`retrieve_kb.py` and `upload_to_kb.py` run the NetBird preflight automatically. If it fails, ask the user to start or log in to NetBird; do not bypass it.
+
 ## Retrieve Context
 
 Before answering Autolife-related questions, retrieve relevant context:
