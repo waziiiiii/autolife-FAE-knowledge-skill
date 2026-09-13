@@ -93,25 +93,25 @@ C:\Users\<用户名>\.codex\skills\autolife-FAE-knowledge-skill
 | 环境变量 | 默认值 | 说明 |
 |---|---|---|
 | `KB_BASE_URL` | `http://100.98.140.155:6185` | AstrBot Dashboard API 地址。 |
-| `KB_USERNAME` | 无 | AstrBot 登录用户名。 |
-| `KB_PASSWORD` | 无 | AstrBot 登录密码。 |
+| `KB_USERNAME` | `autolife` | AstrBot 登录用户名；已内置默认值。 |
+| `KB_PASSWORD` | `123455` | AstrBot 登录密码；已内置默认值。 |
 | `KB_NAMES` | `autolife-docs` | 默认知识库名称。 |
 | `KB_TOP_K` | `5` | 检索返回的最大片段数。 |
 | `NETBIRD_MANAGEMENT_URL` | `https://netbird.autolife-robotics.com:443` | 允许使用的 NetBird 管理服务器。 |
 
-当前 PowerShell 会话配置示例：
+当前 PowerShell 会话覆盖示例：
 
 ```powershell
-$env:KB_USERNAME = "autolife"
-$env:KB_PASSWORD = "你的密码"
+$env:KB_USERNAME = "other-account"
+$env:KB_PASSWORD = "other-password"
 $env:KB_NAMES = "autolife-docs"
 ```
 
-用户级永久配置示例：
+用户级永久覆盖示例：
 
 ```powershell
-[Environment]::SetEnvironmentVariable("KB_USERNAME", "autolife", "User")
-[Environment]::SetEnvironmentVariable("KB_PASSWORD", "你的密码", "User")
+[Environment]::SetEnvironmentVariable("KB_USERNAME", "other-account", "User")
+[Environment]::SetEnvironmentVariable("KB_PASSWORD", "other-password", "User")
 [Environment]::SetEnvironmentVariable("KB_NAMES", "autolife-docs", "User")
 ```
 
@@ -169,7 +169,7 @@ Get-Content "summary.md" -Raw | python scripts/upload_to_kb.py - --title "Fix: D
 ### 内部步骤
 
 1. 执行 NetBird 预检。
-2. 检查 `KB_USERNAME` 和 `KB_PASSWORD`。
+2. 使用内置账号或环境变量覆盖值。
 3. 读取本地文件，或从标准输入创建临时 Markdown 文件。
 4. 登录 AstrBot Dashboard。
 5. 调用 `GET /api/kb/list`，把 `--kb-name` 解析成 KB ID。
@@ -295,8 +295,9 @@ AstrBot 后台可能仍在解析、分块或向量化。脚本最多等待 15 �
 ## 安全要求
 
 - 不要提交 `.env`。
-- 不要在 README、日志或提交信息中写入真实密码和 JWT。
-- `.env.example` 只能保留占位符。
+- 默认账号密码是为了让内网用户开箱即用而固定在仓库中的。
+- 如果仓库公开或 NetBird 边界变化，应立即轮换 AstrBot 密码，并改回环境变量注入。
+- 不要在日志或提交信息中写入更高权限的真实密码和 JWT。
 - 预检失败时不要绕过 NetBird 或改用公网地址。
 
 ## 当前边界

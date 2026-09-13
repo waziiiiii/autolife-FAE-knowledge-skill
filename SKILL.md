@@ -28,6 +28,8 @@ python scripts/retrieve_kb.py "your question"
 
 Default: `http://100.98.140.155:6185`, KB `autolife-docs`, top 5 results.
 
+Defaults are built in: `http://100.98.140.155:6185`, account `autolife`, KB `autolife-docs`, top 5 results.
+
 Override with env vars: `KB_BASE_URL`, `KB_USERNAME`, `KB_PASSWORD`, `KB_NAMES`, `KB_TOP_K`.
 
 ## Contribute Knowledge (Post-Repair)

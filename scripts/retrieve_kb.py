@@ -13,8 +13,8 @@ from urllib.request import Request, urlopen
 from netbird_preflight import ensure_netbird
 
 BASE_URL = os.environ.get("KB_BASE_URL", "http://100.98.140.155:6185")
-USERNAME = os.environ.get("KB_USERNAME")
-PASSWORD = os.environ.get("KB_PASSWORD")
+USERNAME = os.environ.get("KB_USERNAME", "autolife")
+PASSWORD = os.environ.get("KB_PASSWORD", "123455")
 KB_NAMES = os.environ.get("KB_NAMES", "autolife-docs").split(",")
 TOP_K = int(os.environ.get("KB_TOP_K", "5"))
 
